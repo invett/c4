@@ -5,6 +5,9 @@
     <include file="$(find gps_trimble)/launch/gps_trimble.launch"/>
     <include file="$(find hdl_grabber)/launch/show_velodyne_live.launch" />
     <include file="$(find canbus)/launch/canbus.launch" />
+<<<<<<< HEAD
 
+=======
+>>>>>>> 19be01ca3d10d6ecaf9b394f8247fd968e7af77d
     
 </launch>
