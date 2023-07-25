@@ -24,11 +24,12 @@
     
     <!-- CANBUS STUFF -->
     <include file="$(find canbus)/launch/canbus.launch" />
+    <node name="c4_can_parser_node" pkg="c4_can_parser" type="c4_can_parser_node"/>
    
     <!-- VELODYNE LAUNCHER ... select INVETT or ROS version of the driver-->
     <include file="$(find hdl_grabber)/launch/show_velodyne_live.launch"/>
 <!--     <include file="$(find velodyne_pointcloud)/launch/32e_points.launch.launch"/> -->
     
     
-    <node name="rosbag_record_node" pkg="rosbag" type="record" args="/sync_image /vectornav/IMU /velodyne/points /velodyne/nmea_sentence /velodyne/imu_data' -q -o 'invett_c4_'/">
+    <node name="rosbag_record_node" pkg="rosbag" type="record" args="/sync_image /vectornav/IMU /velodyne/points /velodyne/nmea_sentence /velodyne/imu_data /canbus/data -q -o 'invett_c4_'"/>
 </launch>
