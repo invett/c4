@@ -35,7 +35,7 @@ if __name__ == '__main__':
     parser.add_argument('--lidar_topic', dest='lidar_topic', type=str, default='/velodyne_points', help='velodyne point cloud topic')
     parser.add_argument('--image_topic', dest='image_topic', type=str, default='/camera/image_raw', help='velodyne point cloud topic')
     
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
     km_h = args.km_h
     slop = args.slop
     window = args.window
@@ -55,6 +55,7 @@ if __name__ == '__main__':
     ts.registerCallback(callback)
 
     rospy.loginfo_once("Hey! pysyncronizer is up&running, listening to %s and %s. Press ctrl+c to kill this node.", lidar_topic, image_topic)
+    rospy.loginfo_once("Waiting for messages...")
     rospy.spin()
 
     print("\nGoodbye!")

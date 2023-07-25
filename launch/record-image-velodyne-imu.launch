@@ -1,0 +1,34 @@
+<launch>
+    
+    <arg name="pointgrey_frame_rate" default="55"/>
+    <arg name="pointgrey_camera_frame" default="camera" />
+    <arg name="pointgrey_compressed_topic" default="/chameleon_compressed" />
+    
+    <!-- POINTGREY CHAMELEON DRIVER -->
+    <include file="$(find pointgrey_camera_driver)/launch/camera.launch">
+        <arg name="frame_rate" value="$(arg pointgrey_frame_rate)"/>
+        <arg name="camera_name" default="$(arg pointgrey_camera_frame)" />
+    </include>
+    
+    <!-- LIVE COMPRESS IMAGES -->
+    <node name="image_compression_node" pkg="image_transport" type="republish" args="raw in:=/camera/image_raw compressed out:=$(arg pointgrey_compressed_topic)"/>
+
+    <!-- IMU LAUNCHER -->
+    <include file="$(find vectornav)/launch/vectornav.launch"/>
+    
+    <!-- CAMERA/LIDAR SOFTWARE SYNCRONIZER -->
+    <node name="camera_lidar_software_syncronizer" pkg="c4" type="pysyncronyzer.py" args="--lidar_topic /velodyne/points --camera_topic /chameleon_compressed" output="screen"/>
+    
+    <!-- GPS TRIMBLE -->
+    <include file="$(find gps_trimble)/launch/gps_trimble.launch"/>
+    
+    <!-- CANBUS STUFF -->
+    <include file="$(find canbus)/launch/canbus.launch" />
+   
+    <!-- VELODYNE LAUNCHER ... select INVETT or ROS version of the driver-->
+    <include file="$(find hdl_grabber)/launch/show_velodyne_live.launch"/>
+<!--     <include file="$(find velodyne_pointcloud)/launch/32e_points.launch.launch"/> -->
+    
+    
+    <node name="rosbag_record_node" pkg="rosbag" type="record" args="/sync_image /vectornav/IMU /velodyne/points /velodyne/nmea_sentence /velodyne/imu_data' -q -o 'invett_c4_'/">
+</launch>
