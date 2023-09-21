@@ -7,7 +7,13 @@ project(c4)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED)
+#find_package(catkin REQUIRED)
+find_package(Boost REQUIRED COMPONENTS thread)
+find_package(OpenCV REQUIRED)
+find_package(catkin REQUIRED COMPONENTS camera_calibration_parsers cv_bridge dynamic_reconfigure image_transport message_filters message_generation nodelet rosconsole roscpp std_srvs stereo_msgs tf tf2 tf2_eigen tf2_ros)
+find_package(PCL REQUIRED QUIET COMPONENTS common features filters io segmentation surface)
+find_package(Eigen3 REQUIRED)
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -113,7 +119,10 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
 # include
-# ${catkin_INCLUDE_DIRS}
+#${Boost_INCLUDE_DIRS}
+${catkin_INCLUDE_DIRS}
+${OpenCV_INCLUDE_DIRS}
+${PCL_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -130,6 +139,14 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/c4_node.cpp)
+
+add_executable(image_saver src/image_saver.cpp)
+target_link_libraries(image_saver ${catkin_LIBRARIES}
+                                  ${OpenCV_LIBRARIES}
+)
+
+add_executable(pointcloud_to_pcd src/pointcloud_to_pcd.cpp)
+target_link_libraries(pointcloud_to_pcd ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
