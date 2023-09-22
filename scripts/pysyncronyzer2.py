@@ -24,6 +24,9 @@
 # rosrun c4 pointcloud_to_pcd input:=/tosave_sync_lidar _binary:=True _filename_format:=_%010d.pcd _compressed:=True
 # rosrun c4 image_saver image:=/tosave_sync_image _filename_format:=_%010d.png _stamped_filename:='True'  
 
+# rosrun gps_time  gps_time_fixer           #fixes both gps + utm topics (/trimple/fix and /gps_trimble/trimble/position) republish same topic with w_time suffix
+# rosrun c4 gps_utm_logger.py
+
 # Create videos with:
 # rosrun image_view video_recorder _codec:=X264 _filename:=invett.mp4 image:=/tosave_sync_image
 # rosrun image_view video_recorder _codec:=fmp4 _filename:=invett.mp4 image:=/tosave_sync_image
@@ -39,7 +42,7 @@ from std_msgs.msg import Int32, Float32
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import NavSatFix
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import PointStamped
 
 # https://github.com/Turbo87/utm/blob/master/utm/conversion.py#L4
 try:
@@ -54,8 +57,8 @@ slop=0.01
 window=50
 input_lidar_topic='/velodyne_points'
 input_image_topic='/sync_image'
-input_CARTESIAN_fix_topic='/gps_trimble/trimble/position'
-input_LATLON_fix_topic='/trimble/fix_w_time'  #for july23 bags, use gps_time_fixer
+input_LATLON_fix_topic='/trimble/fix_w_time'    #for july23 bags, use gps_time_fixer -- convert here with from_latlon or subscribe to /gps_trimble/trimble/position_w_time'
+input_CARTESIAN_fix_topic='/gps_trimble/trimble/position_w_time'
 
 output_lidar_topic='tosave_sync_lidar'
 output_image_topic='tosave_sync_image'
@@ -251,7 +254,8 @@ def callback(lidar, image, gps_time):
                   km_h, 
                   diff*km_h/3.6)
     syncpub_lidar.publish(lidar)
-    syncpub_image.publish(image)    
+    syncpub_image.publish(image)   
+    syncpub_cartesian.publish(gps_time)
     
     # easting, northing, zone_number, zone_letter = from_latlon(latitude=gps_time.latitude, longitude=gps_time.longitude)
 
@@ -276,16 +280,16 @@ if __name__ == '__main__':
 
     unsync_lidar = message_filters.Subscriber(input_lidar_topic, PointCloud2)
     unsync_image = message_filters.Subscriber(input_image_topic, Image)
-    unsync_gps_cartesian = message_filters.Subscriber(input_CARTESIAN_fix_topic, Point)
+    unsync_gps_cartesian = message_filters.Subscriber(input_CARTESIAN_fix_topic, PointStamped)
     unsync_gps_latlon = message_filters.Subscriber(input_LATLON_fix_topic, NavSatFix)
 
     syncpub_lidar = rospy.Publisher(output_lidar_topic, PointCloud2, queue_size=1)
     syncpub_image = rospy.Publisher(output_image_topic, Image, queue_size=1)
-    syncpub_cartesian = rospy.Publisher(output_gps_cartesian, Point, queue_size=1)
+    syncpub_cartesian = rospy.Publisher(output_gps_cartesian, PointStamped, queue_size=1)
     syncpub_lon = rospy.Publisher(output_gps_latlon, NavSatFix, queue_size=1)
 
     #ts = message_filters.ApproximateTimeSynchronizer([unsync_lidar, unsync_image], window, slop, allow_headerless=False)
-    ts = message_filters.ApproximateTimeSynchronizer([unsync_lidar, unsync_image, unsync_gps_latlon], window, slop, allow_headerless=True)
+    ts = message_filters.ApproximateTimeSynchronizer([unsync_lidar, unsync_image, unsync_gps_cartesian], window, slop, allow_headerless=True)
     ts.registerCallback(callback)
 
     rospy.loginfo_once("Hey! pysyncronizer2 is up&running, listening to %s and %s.", input_lidar_topic, input_image_topic)

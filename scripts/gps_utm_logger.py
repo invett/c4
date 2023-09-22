@@ -21,7 +21,8 @@ def listener():
 
     rospy.init_node('gps_utm_logger', anonymous=True)
     
-    input_topic = "/gps_trimble/trimble/position_w_time"
+    #input_topic = "/gps_trimble/trimble/position_w_time"
+    input_topic = "/tosave_gps_cartesian"   #published by pysyncronizer2
 
     rospy.Subscriber(input_topic, PointStamped, callback)
     
