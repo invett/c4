@@ -1,49 +1,59 @@
 """
-This script is used to sync the BAGs recorded with these published topics:
 
-    /canbus/data
-    /clock
-    /gps_trimble/trimble/position
-    /rosout
-    /rosout_agg
-    /sync_image
-    /trimble/fix
-    /trimble/gga
-    /vectornav/IMU
-    /velodyne_points
+    This script is used to sync the BAGs recorded with the following published topics. Why another script? Because the first recorded BAGs don't have timestamps and we had to do a little work...
+
+        /canbus/data
+        /clock
+        /gps_trimble/trimble/position
+        /rosout
+        /rosout_agg
+        /sync_image
+        /trimble/fix
+        /trimble/gga
+        /vectornav/IMU
+        /velodyne_points
     
-where /sync_lidar is missing. Moreover, in the first 4 bags recorded in july 2023 (see below) sometimes a frame is missing. I used this node to sincronize
+    where /sync_lidar is missing. Moreover, in the first 4 bags recorded in july 2023 (see below) sometimes a frame is missing. I used this node to sincronize
     
-    invett_c4__2023-07-25-17-24-47.bag
-    invett_c4__2023-07-25-17-29-59.bag
-    invett_c4__2023-07-25-17-32-24.bag
-    invett_c4__2023-07-25-17-35-58.bag
+        invett_c4__2023-07-25-17-24-47.bag
+        invett_c4__2023-07-25-17-29-59.bag
+        invett_c4__2023-07-25-17-32-24.bag
+        invett_c4__2023-07-25-17-35-58.bag
+    
+    This script will syncronize
+
+        TOPIC                PARAMETERs                     CURRENT VERSION
+        =================================================================================================
+        unsync_lidar         input_lidar_topic          => '/velodyne_points'
+        unsync_image         input_image_topic          => '/sync_image'
+        unsync_gps_cart      input_LATLON_fix_topic     => '/trimble/fix_w_time'    #for july23 bags
+        unsync_gps_latl      input_CARTESIAN_fix_topic  => '/gps_trimble/trimble/position_w_time'
+        unsync_imu           input_imu                  => '/vectornav/IMU'
+
+    Example:
+
+    rosbag play ../invett_c4__2023-07-25-17-24-47.bag --clock --topics /velodyne_points /sync_image /gps_trimble/trimble/position /trimble/fix --pause -r 0.25
 
 
-Example:
+    Other info:
 
-rosbag play ../invett_c4__2023-07-25-17-24-47.bag --clock --topics /velodyne_points /sync_image /gps_trimble/trimble/position /trimble/fix --pause -r 0.25
+        Create PCD and IMAGES with.
+            PCD header stamp > has microseconds
+            ROS header stamp > has nanoseconds 
+            
+            
+        rosrun c4 pointcloud_to_pcd input:=/tosave_sync_lidar _binary:=True _filename_format:=_%010d.pcd _compressed:=True
+        rosrun c4 image_saver image:=/tosave_sync_image _filename_format:=_%010d.png _stamped_filename:='True'  
 
+        rosrun gps_time  gps_time_fixer           #fixes both gps + utm topics (/trimple/fix and /gps_trimble/trimble/position) republish same topic with w_time suffix
+        rosrun c4 gps_utm_logger.py
 
-Other info:
+        Create videos with:
+        rosrun image_view video_recorder _codec:=X264 _filename:=invett.mp4 image:=/tosave_sync_image
+        rosrun image_view video_recorder _codec:=fmp4 _filename:=invett.mp4 image:=/tosave_sync_image
 
-    Create PCD and IMAGES with.
-        PCD header stamp > has microseconds
-        ROS header stamp > has nanoseconds 
-        
-        
-    rosrun c4 pointcloud_to_pcd input:=/tosave_sync_lidar _binary:=True _filename_format:=_%010d.pcd _compressed:=True
-    rosrun c4 image_saver image:=/tosave_sync_image _filename_format:=_%010d.png _stamped_filename:='True'  
-
-    rosrun gps_time  gps_time_fixer           #fixes both gps + utm topics (/trimple/fix and /gps_trimble/trimble/position) republish same topic with w_time suffix
-    rosrun c4 gps_utm_logger.py
-
-    Create videos with:
-    rosrun image_view video_recorder _codec:=X264 _filename:=invett.mp4 image:=/tosave_sync_image
-    rosrun image_view video_recorder _codec:=fmp4 _filename:=invett.mp4 image:=/tosave_sync_image
-
-    /gps_trimble/trimble/position --> x/y/z (cartesian)
-    /trimble/fix                  --> lat/lon/altitude
+        /gps_trimble/trimble/position --> x/y/z (cartesian)
+        /trimble/fix                  --> lat/lon/altitude
 
 """
 
@@ -69,6 +79,7 @@ except ImportError:
 km_h=30
 slop=0.01
 window=50
+
 input_lidar_topic='/velodyne_points'
 input_image_topic='/sync_image'
 input_LATLON_fix_topic='/trimble/fix_w_time'    #for july23 bags, use gps_time_fixer -- convert here with from_latlon or subscribe to /gps_trimble/trimble/position_w_time'

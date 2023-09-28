@@ -1,3 +1,13 @@
+"""
+
+    This script only syncronizes
+    
+        * LiDAR PointCloud
+        * Camera Images
+
+"""
+
+
 import argparse
 import rospy
 import message_filters
@@ -9,6 +19,7 @@ from sensor_msgs.msg import Image
 km_h=30
 slop=0.01
 window=50
+
 lidar_topic='/velodyne_points'
 image_topic='/camera/image_raw'
 

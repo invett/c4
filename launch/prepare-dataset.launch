@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+
+    
+    <node name="prepare-dataset-syncronizer"    pkg="c4" type="pysyncronyzer2.py" args="--slop 0.05" output="screen"/>
+    <node name="prepare-dataset-gps_fixer"      pkg="gps_time" type="gps_time_fixer" args="" output="screen"/>
+    
+    <node name="prepare-dataset-logger-imu"     pkg="c4" type="imu_logger.py" args="" output="screen"/>
+    <node name="prepare-dataset-logger-gps_utm" pkg="c4" type="gps_utm_logger.py" args="" output="screen"/>
+    <node name="prepare-dataset-logger-gps_L_L" pkg="c4" type="gps_latlon_logger.py" args="" output="screen"/>
+    
+    <node name="prepare-dataset-logger-images"  pkg="c4" type="image_saver" args="image:=/tosave_sync_image _filename_format:=_%010d.png _stamped_filename:='True'" output="screen"/>
+    <node name="prepare-dataset-logger-pcd"     pkg="c4" type="image_saver" args="input:=/tosave_sync_lidar _binary:='False' _filename_format:=_%010d.pcd _compressed:='False'" output="screen"/>
+      
+    
+</launch>

@@ -17,7 +17,7 @@
     <include file="$(find vectornav)/launch/vectornav.launch"/>
     
     <!-- CAMERA/LIDAR SOFTWARE SYNCRONIZER -->
-    <node name="camera_lidar_software_syncronizer" pkg="c4" type="pysyncronyzer.py" args="--lidar_topic /velodyne/points --camera_topic /chameleon_compressed" output="screen"/>
+    <node name="camera_lidar_software_syncronizer" pkg="c4" type="pysyncronyzer.py" args="--lidar_topic /velodyne/points --image_topic $(arg pointgrey_compressed_topic)" output="screen"/>
     
     <!-- GPS TRIMBLE -->
     <include file="$(find gps_trimble)/launch/gps_trimble.launch"/>
