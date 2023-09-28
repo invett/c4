@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-
+    <!--
+    
+        This launch contains the nodes to be used to create dataset folders for the recorded bags
+    
+    -->
     
     <node name="prepare-dataset-syncronizer"    pkg="c4" type="pysyncronyzer2.py" args="--slop 0.05" output="screen"/>
     <node name="prepare-dataset-gps_fixer"      pkg="gps_time" type="gps_time_fixer" args="" output="screen"/>
