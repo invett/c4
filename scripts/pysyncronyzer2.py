@@ -1,38 +1,51 @@
-# this script is used to sync the BAGs recorded with these published topics:
-# 
-# /canbus/data
-# /clock
-# /gps_trimble/trimble/position
-# /rosout
-# /rosout_agg
-# /sync_image
-# /trimble/fix
-# /trimble/gga
-# /vectornav/IMU
-# /velodyne_points
-# 
-# where /sync_lidar is missing. Moreover, in the first 4 bags recorded in july 2023 (see below) sometimes a frame is missing. I used this node to sincronize
-# 
-# invett_c4__2023-07-25-17-24-47.bag
-# invett_c4__2023-07-25-17-29-59.bag
-# invett_c4__2023-07-25-17-32-24.bag
-# invett_c4__2023-07-25-17-35-58.bag
+"""
+This script is used to sync the BAGs recorded with these published topics:
 
-# Create PCD and IMAGES with.
-# PCD header stamp > has microseconds
-# ROS header stamp > has nanoseconds 
-# rosrun c4 pointcloud_to_pcd input:=/tosave_sync_lidar _binary:=True _filename_format:=_%010d.pcd _compressed:=True
-# rosrun c4 image_saver image:=/tosave_sync_image _filename_format:=_%010d.png _stamped_filename:='True'  
+    /canbus/data
+    /clock
+    /gps_trimble/trimble/position
+    /rosout
+    /rosout_agg
+    /sync_image
+    /trimble/fix
+    /trimble/gga
+    /vectornav/IMU
+    /velodyne_points
+    
+where /sync_lidar is missing. Moreover, in the first 4 bags recorded in july 2023 (see below) sometimes a frame is missing. I used this node to sincronize
+    
+    invett_c4__2023-07-25-17-24-47.bag
+    invett_c4__2023-07-25-17-29-59.bag
+    invett_c4__2023-07-25-17-32-24.bag
+    invett_c4__2023-07-25-17-35-58.bag
 
-# rosrun gps_time  gps_time_fixer           #fixes both gps + utm topics (/trimple/fix and /gps_trimble/trimble/position) republish same topic with w_time suffix
-# rosrun c4 gps_utm_logger.py
 
-# Create videos with:
-# rosrun image_view video_recorder _codec:=X264 _filename:=invett.mp4 image:=/tosave_sync_image
-# rosrun image_view video_recorder _codec:=fmp4 _filename:=invett.mp4 image:=/tosave_sync_image
+Example:
 
-#  /gps_trimble/trimble/position --> x/y/z (cartesian)
-#  /trimble/fix                  --> lat/lon/altitude
+rosbag play ../invett_c4__2023-07-25-17-24-47.bag --clock --topics /velodyne_points /sync_image /gps_trimble/trimble/position /trimble/fix --pause -r 0.25
+
+
+Other info:
+
+    Create PCD and IMAGES with.
+        PCD header stamp > has microseconds
+        ROS header stamp > has nanoseconds 
+        
+        
+    rosrun c4 pointcloud_to_pcd input:=/tosave_sync_lidar _binary:=True _filename_format:=_%010d.pcd _compressed:=True
+    rosrun c4 image_saver image:=/tosave_sync_image _filename_format:=_%010d.png _stamped_filename:='True'  
+
+    rosrun gps_time  gps_time_fixer           #fixes both gps + utm topics (/trimple/fix and /gps_trimble/trimble/position) republish same topic with w_time suffix
+    rosrun c4 gps_utm_logger.py
+
+    Create videos with:
+    rosrun image_view video_recorder _codec:=X264 _filename:=invett.mp4 image:=/tosave_sync_image
+    rosrun image_view video_recorder _codec:=fmp4 _filename:=invett.mp4 image:=/tosave_sync_image
+
+    /gps_trimble/trimble/position --> x/y/z (cartesian)
+    /trimble/fix                  --> lat/lon/altitude
+
+"""
 
 import argparse
 import rospy
@@ -43,6 +56,7 @@ from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import PointStamped
+from sensor_msgs.msg import Imu
 
 # https://github.com/Turbo87/utm/blob/master/utm/conversion.py#L4
 try:
@@ -59,11 +73,13 @@ input_lidar_topic='/velodyne_points'
 input_image_topic='/sync_image'
 input_LATLON_fix_topic='/trimble/fix_w_time'    #for july23 bags, use gps_time_fixer -- convert here with from_latlon or subscribe to /gps_trimble/trimble/position_w_time'
 input_CARTESIAN_fix_topic='/gps_trimble/trimble/position_w_time'
+input_imu='/vectornav/IMU'
 
 output_lidar_topic='tosave_sync_lidar'
 output_image_topic='tosave_sync_image'
 output_gps_cartesian='tosave_gps_cartesian'
 output_gps_latlon='tosave_gps_latlon'
+output_imu='tosave_imu'
 
 # FOLLOWING STUFF IS FROM https://github.com/Turbo87/utm/blob/master/utm/conversion.py#L41 TO CONVERT LAT LON TO UTM COORDINATES (EASTING+NORTHING)
 ZONE_LETTERS = "CDEFGHJKLMNPQRSTUVWXX"
@@ -240,7 +256,7 @@ def negative(x):
 # END OF THE STUFF 
 
 
-def callback(lidar, image, gps_time):
+def callback(lidar, image, gps_time, latlon, imu):
     rospy.loginfo_once('First message received. No other message will be printed. You can change log level to debug to see some more info.')
     diff=(abs(lidar.header.stamp-image.header.stamp).to_sec())
     rospy.loginfo("lidar %d.%d\t image: %d.%d\t gps %d.%d\t diff[lidar_image]: %.9fs\t distance %d km/h: %fm", 
@@ -256,6 +272,8 @@ def callback(lidar, image, gps_time):
     syncpub_lidar.publish(lidar)
     syncpub_image.publish(image)   
     syncpub_cartesian.publish(gps_time)
+    syncpub_imu.publish(imu)
+    syncpub_latlon.publish(latlon)
     
     # easting, northing, zone_number, zone_letter = from_latlon(latitude=gps_time.latitude, longitude=gps_time.longitude)
 
@@ -282,14 +300,16 @@ if __name__ == '__main__':
     unsync_image = message_filters.Subscriber(input_image_topic, Image)
     unsync_gps_cartesian = message_filters.Subscriber(input_CARTESIAN_fix_topic, PointStamped)
     unsync_gps_latlon = message_filters.Subscriber(input_LATLON_fix_topic, NavSatFix)
+    unsync_imu = message_filters.Subscriber(input_imu, Imu)
 
     syncpub_lidar = rospy.Publisher(output_lidar_topic, PointCloud2, queue_size=1)
     syncpub_image = rospy.Publisher(output_image_topic, Image, queue_size=1)
     syncpub_cartesian = rospy.Publisher(output_gps_cartesian, PointStamped, queue_size=1)
-    syncpub_lon = rospy.Publisher(output_gps_latlon, NavSatFix, queue_size=1)
+    syncpub_latlon = rospy.Publisher(output_gps_latlon, NavSatFix, queue_size=1)
+    syncpub_imu = rospy.Publisher(output_imu, Imu, queue_size=1)
 
     #ts = message_filters.ApproximateTimeSynchronizer([unsync_lidar, unsync_image], window, slop, allow_headerless=False)
-    ts = message_filters.ApproximateTimeSynchronizer([unsync_lidar, unsync_image, unsync_gps_cartesian], window, slop, allow_headerless=True)
+    ts = message_filters.ApproximateTimeSynchronizer([unsync_lidar, unsync_image, unsync_gps_cartesian, unsync_gps_latlon, unsync_imu], window, slop, allow_headerless=True)
     ts.registerCallback(callback)
 
     rospy.loginfo_once("Hey! pysyncronizer2 is up&running, listening to %s and %s.", input_lidar_topic, input_image_topic)
