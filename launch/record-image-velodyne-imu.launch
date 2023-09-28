@@ -25,7 +25,7 @@
     <!-- CAMERA/LIDAR SOFTWARE SYNCRONIZER -->
     <node name="camera_lidar_software_syncronizer" pkg="c4" type="pysyncronyzer.py" args="--lidar_topic /velodyne/points --image_topic $(arg pointgrey_compressed_topic)" output="screen"/>
     
-        <!-- GPS TRIMBLE -->
+    <!-- GPS TRIMBLE -->
     <include file="$(find gps_trimble)/launch/gps_trimble.launch"/>
     
     <!-- CANBUS STUFF -->
