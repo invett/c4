@@ -1,8 +1,17 @@
 <launch>
     
+    <!-- LAUNCHER CONFIGURATION -->
+    <arg name="LIDAR_DRIVER" value="INVETT" doc="Set to INVETT or ROS"/>  
+    <arg name="RECORD"       value="False"  doc="If true, a rosbag record with selected topics will run"/>
+    
+    <!-- OTHER NODES CONFIGURATIONS -->
     <arg name="pointgrey_frame_rate" default="55"/>
     <arg name="pointgrey_camera_frame" default="camera" />
     <arg name="pointgrey_compressed_topic" default="/chameleon_compressed" />
+    
+    <!-- VELODYNE LAUNCHER ... select INVETT or ROS version of the driver with parameter LIDAR_DRIVER-->
+    <include file="$(find hdl_grabber)/launch/velodyne_invett_HDL32E.launch" if="$(eval LIDAR_DRIVER == 'INVETT')"/>
+    <include file="$(find velodyne_pointcloud)/launch/32e_points.launch.launch" if="$(eval LIDAR_DRIVER == 'ROS')"/> 
     
     <!-- POINTGREY CHAMELEON DRIVER -->
     <include file="$(find pointgrey_camera_driver)/launch/camera.launch">
@@ -12,24 +21,23 @@
     
     <!-- LIVE COMPRESS IMAGES -->
     <node name="image_compression_node" pkg="image_transport" type="republish" args="raw in:=/camera/image_raw compressed out:=$(arg pointgrey_compressed_topic)"/>
-
-    <!-- IMU LAUNCHER -->
-    <include file="$(find vectornav)/launch/vectornav.launch"/>
     
     <!-- CAMERA/LIDAR SOFTWARE SYNCRONIZER -->
     <node name="camera_lidar_software_syncronizer" pkg="c4" type="pysyncronyzer.py" args="--lidar_topic /velodyne/points --image_topic $(arg pointgrey_compressed_topic)" output="screen"/>
     
-    <!-- GPS TRIMBLE -->
+        <!-- GPS TRIMBLE -->
     <include file="$(find gps_trimble)/launch/gps_trimble.launch"/>
     
     <!-- CANBUS STUFF -->
     <include file="$(find canbus)/launch/canbus.launch" />
     <node name="c4_can_parser_node" pkg="c4_can_parser" type="c4_can_parser_node"/>
-   
-    <!-- VELODYNE LAUNCHER ... select INVETT or ROS version of the driver-->
-    <include file="$(find hdl_grabber)/launch/show_velodyne_live.launch"/>
-<!--     <include file="$(find velodyne_pointcloud)/launch/32e_points.launch.launch"/> -->
     
+    <!-- IMU LAUNCHER -->
+    <include file="$(find vectornav)/launch/vectornav.launch"/>
+        
     
-    <node name="rosbag_record_node" pkg="rosbag" type="record" args="/sync_image /vectornav/IMU /velodyne/points /velodyne/nmea_sentence /velodyne/imu_data /canbus/data -q -o 'invett_c4_'"/>
+    <node name="rosbag_record_node" pkg="rosbag" type="record" args="/sync_image /vectornav/IMU /velodyne/points /velodyne/nmea_sentence /velodyne/imu_data /canbus/data -q -o 'invett_c4_'" if="$(arg RECORD)/>
+    
+      
+    
 </launch>
