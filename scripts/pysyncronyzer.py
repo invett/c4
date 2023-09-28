@@ -14,7 +14,7 @@ import message_filters
 from std_msgs.msg import Int32, Float32
 
 from sensor_msgs.msg import PointCloud2
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage
 
 km_h=30
 slop=0.01
@@ -24,9 +24,10 @@ lidar_topic='/velodyne_points'
 image_topic='/camera/image_raw'
 
 def callback(lidar, image):
-    rospy.loginfo_once('First message received. No other message will be printed. You can change log level to debug to see some more info.')
+    # rospy.loginfo_once('First message received. No other message will be printed. You can change log level to debug to see some more info.')
+    rospy.loginfo_once('First message received. Other message will be printed periodically (10s seconds).')
     diff=(abs(lidar.header.stamp-image.header.stamp).to_nsec()/1000000000)
-    rospy.logdebug("lidar %d.%d\t image: %d.%d\t diff: %.9fs\t distance %d km/h: %fm", 
+    rospy.loginfo_throttle(10, "lidar %d.%d\t image: %d.%d\t diff: %.9fs\t distance @ %d km/h: %fm", 
                   lidar.header.stamp.secs, 
                   lidar.header.stamp.nsecs, 
                   image.header.stamp.secs,
@@ -56,10 +57,10 @@ if __name__ == '__main__':
     rospy.init_node('pysyncronizer', anonymous=True)  
 
     unsync_lidar = message_filters.Subscriber(lidar_topic, PointCloud2)
-    unsync_image = message_filters.Subscriber(image_topic, Image)
+    unsync_image = message_filters.Subscriber(image_topic, CompressedImage)
 
     syncpub_lidar = rospy.Publisher('sync_lidar', PointCloud2, queue_size=1)
-    syncpub_image = rospy.Publisher('sync_image', Image, queue_size=1)
+    syncpub_image = rospy.Publisher('sync_image', CompressedImage, queue_size=1)
 
 
     ts = message_filters.ApproximateTimeSynchronizer([unsync_lidar, unsync_image], 50, 0.01, allow_headerless=False)

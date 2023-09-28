@@ -1,42 +1,134 @@
 <launch>
     
-    <!-- LAUNCHER CONFIGURATION -->
-    <arg name="LIDAR_DRIVER" value="INVETT" doc="Set to INVETT or ROS"/>  
-    <arg name="RECORD"       value="False"  doc="If true, a rosbag record with selected topics will run"/>
+    <!-- README
+    
+        C4 package has two syncronization nodes, pysyncronyzer and pysyncronyzer2. The first (pysyncronyzer) syncronizes just LiDAR "PointCloud" and "Camera Images". 
+        
+        The latter syncronizes instead:
+        
+        input_lidar_topic='/velodyne_points', 
+        input_image_topic='/sync_image'
+        input_LATLON_fix_topic='/trimble/fix_w_time'    #for july23 bags, use gps_time_fixer - convert here with from_latlon or subscribe to /gps_trimble/trimble/position_w_time'
+        input_CARTESIAN_fix_topic='/gps_trimble/trimble/position_w_time'
+        input_imu='/vectornav/IMU'   
+        
+        This launch is prepared to use POINTGREY CHAMELEON cameras. Enable a specific camera using its serial number. Here two of the are provided, just one enabled S/N: 16306019
+        If you want to enable the second camera, consider also enabling the second compression node
+    
+    -->
+    
+    <!-- LAUNCHER CONFIGURATION | Where otherwise specified, use TRUE or FALSE (boolean is not case sensitive here) -->
+    <arg name="LIDAR_DRIVER"            value="INVETT" doc="Set to INVETT or ROS. Set anything else to disable"/>  
+    <arg name="CAMERA_DRIVER"           value="True"   doc="If true, enables PointGrey Camera Driver"/>
+    <arg name="TRIMBLE_DRIVER"          value="False"  doc="If true, enables Trimble GPS Driver"/>
+    <arg name="CANBUS_DRIVER"           value="False"  doc="If true, enables all nodes related to CANBUS"/>
+    <arg name="IMU_DRIVER"              value="False"  doc="If true, enables VN100 IMU Driver"/>
+        
+    <arg name="COMPRESS_IMAGES"         value="True"   doc="If true, enables online image compression"/>
+    <arg name="IMAGE_LIDAR_SYNCRONIZER" value="True"   doc="If true, enables online image compression"/>
+    
+    <arg name="RECORD"                  value="False"  doc="If true, a rosbag record with selected topics will run"/>
+    
     
     <!-- OTHER NODES CONFIGURATIONS -->
     <arg name="pointgrey_frame_rate" default="55"/>
-    <arg name="pointgrey_camera_frame" default="camera" />
-    <arg name="pointgrey_compressed_topic" default="/chameleon_compressed" />
+    <arg name="pointgrey_compressed_topic" default="/chameleon_1_compressed" />
+    
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
     
     <!-- VELODYNE LAUNCHER ... select INVETT or ROS version of the driver with parameter LIDAR_DRIVER-->
     <include file="$(find hdl_grabber)/launch/velodyne_invett_HDL32E.launch" if="$(eval LIDAR_DRIVER == 'INVETT')"/>
     <include file="$(find velodyne_pointcloud)/launch/32e_points.launch.launch" if="$(eval LIDAR_DRIVER == 'ROS')"/> 
     
-    <!-- POINTGREY CHAMELEON DRIVER -->
-    <include file="$(find pointgrey_camera_driver)/launch/camera.launch">
-        <arg name="frame_rate" value="$(arg pointgrey_frame_rate)"/>
-        <arg name="camera_name" default="$(arg pointgrey_camera_frame)" />
-    </include>
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
     
-    <!-- LIVE COMPRESS IMAGES -->
-    <node name="image_compression_node" pkg="image_transport" type="republish" args="raw in:=/camera/image_raw compressed out:=$(arg pointgrey_compressed_topic)"/>
+    <!-- POINTGREY CHAMELEON DRIVER -->
+    <!-- Chameleon3 CM3-U3-31S4C SN 16306019 -->
+    <include file="$(find pointgrey_camera_driver)/launch/camera.launch" if="$(arg CAMERA_DRIVER)">
+        <arg name="frame_rate" value="$(arg pointgrey_frame_rate)"/>
+        <arg name="camera_name" default="chameleon_1"/>
+        <arg name="camera_serial" default="16306019" /> <!-- Chameleon3 CM3-U3-31S4C SN 16306019 -->
+    </include>
+
+    <!-- Chameleon3 CM3-U3-31S4C SN 16278816 -->
+    <!--
+    <include file="$(find pointgrey_camera_driver)/launch/camera.launch" if="$(arg CAMERA_DRIVER)">
+        <arg name="frame_rate" value="$(arg pointgrey_frame_rate)"/>
+        <arg name="camera_name" default="chameleon_2"/>
+        <arg name="camera_serial" default="16278816" /> 
+    </include> 
+    -->
+    
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    
+    <!-- LIVE COMPRESS IMAGES: live compress images to avoid raw data transfer -->
+    <node name="image_compression_node_1" 
+          pkg="image_transport" 
+          type="republish" 
+          args="raw in:=/chameleon_1/image_raw compressed out:=$(arg pointgrey_compressed_topic)" 
+          if="$(arg COMPRESS_IMAGES)"/>
+    <!--
+    <node name="image_compression_node_2" 
+          pkg="image_transport" 
+          type="republish" 
+          args="raw in:=/chameleon_w/image_raw compressed out:=$(arg pointgrey_compressed_topic)" 
+          if="$(arg COMPRESS_IMAGES)"/>
+    -->
+    
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
     
     <!-- CAMERA/LIDAR SOFTWARE SYNCRONIZER -->
-    <node name="camera_lidar_software_syncronizer" pkg="c4" type="pysyncronyzer.py" args="--lidar_topic /velodyne/points --image_topic $(arg pointgrey_compressed_topic)" output="screen"/>
+    <node name="camera_lidar_software_syncronizer" 
+          pkg="c4" 
+          type="pysyncronyzer.py" 
+          args="--lidar_topic /velodyne/points --image_topic $(arg pointgrey_compressed_topic)/compressed" 
+          if="$(arg IMAGE_LIDAR_SYNCRONIZER)" 
+          output="screen"/>
+    
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
     
     <!-- GPS TRIMBLE -->
-    <include file="$(find gps_trimble)/launch/gps_trimble.launch"/>
+    <include file="$(find gps_trimble)/launch/gps_trimble.launch" if="$(arg TRIMBLE_DRIVER)"/>
+
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
     
     <!-- CANBUS STUFF -->
-    <include file="$(find canbus)/launch/canbus.launch" />
-    <node name="c4_can_parser_node" pkg="c4_can_parser" type="c4_can_parser_node"/>
+    <group if="$(arg CANBUS_DRIVER)">
+        <include file="$(find canbus)/launch/canbus.launch" />
+        <node name="c4_can_parser_node" 
+              pkg="c4_can_parser" 
+              type="c4_can_parser_node"/>
+    </group>
     
-    <!-- IMU LAUNCHER -->
-    <include file="$(find vectornav)/launch/vectornav.launch"/>
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
         
+    <!-- IMU LAUNCHER -->
+    <include file="$(find vectornav)/launch/vectornav.launch" 
+             if="$(arg IMU_DRIVER)"/>
+
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
+    <!-- ********************************************************************************************* -->
     
-    <node name="rosbag_record_node" pkg="rosbag" type="record" args="/sync_image /vectornav/IMU /velodyne/points /velodyne/nmea_sentence /velodyne/imu_data /canbus/data -q -o 'invett_c4_'" if="$(arg RECORD)/>
+    <node name="rosbag_record_node" 
+          pkg="rosbag" 
+          type="record" 
+          args="/sync_image /vectornav/IMU /velodyne/points /velodyne/nmea_sentence /velodyne/imu_data /canbus/data -q -o 'invett_c4_'" 
+          if="$(arg RECORD)"/>
     
       
     

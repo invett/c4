@@ -2,7 +2,11 @@
 <launch>
     <!--
     
-        This launch contains the nodes to be used to create dataset folders for the recorded bags
+        This launch contains the nodes to be used to create dataset folders for the recorded bags. 
+        The double jump from pysyncronizer to pysyncronyzer2 is just to allow for different message recording frequencies. 
+        Online data is recorded with pysyncronizer, then the dataset is prepared with pysyncronyzer2.
+    
+        image_saver is a standard ros node BUT I modified the code to have both images and cameras recorded in the same way.
     
     -->
     
@@ -13,8 +17,8 @@
     <node name="prepare-dataset-logger-gps_utm" pkg="c4" type="gps_utm_logger.py" args="" output="screen"/>
     <node name="prepare-dataset-logger-gps_L_L" pkg="c4" type="gps_latlon_logger.py" args="" output="screen"/>
     
-    <node name="prepare-dataset-logger-images"  pkg="c4" type="image_saver" args="image:=/tosave_sync_image _filename_format:=_%010d.png _stamped_filename:='True'" output="screen"/>
-    <node name="prepare-dataset-logger-pcd"     pkg="c4" type="image_saver" args="input:=/tosave_sync_lidar _binary:='False' _filename_format:=_%010d.pcd _compressed:='False'" output="screen"/>
+    <node name="prepare-dataset-logger-images"  pkg="c4" type="image_saver"       args="image:=/tosave_sync_image _filename_format:=_%010d.png _stamped_filename:='True'" output="screen"/>
+    <node name="prepare-dataset-logger-pcd"     pkg="c4" type="pointcloud_to_pcd" args="input:=/tosave_sync_lidar _binary:='False' _filename_format:=_%010d.pcd _compressed:='False'" output="screen"/>
       
     
 </launch>
